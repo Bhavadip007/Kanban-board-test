@@ -7,6 +7,6 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "build": "npm run build --prefix frontend",
-    "setup": "test -f backend/.env || cp backend/.env.example backend/.env; test -f frontend/.env || cp frontend/.env.example frontend/.env; npm run install:all && npm run seed"
+    "setup": "test -f backend/.env || cp backend/.env.example backend/.env; test -f frontend/.env || cp frontend/.env.example frontend/.env; npm run install:all"
   }
 }

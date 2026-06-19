@@ -1,5 +1,6 @@
 const boardService = require('../services/board.service');
 const asyncHandler = require('../utils/asyncHandler');
+const { boardRoom } = require('../socket');
 
 const listBoards = asyncHandler(async (req, res) => {
   const boards = await boardService.listBoards(req.user._id);
@@ -18,6 +19,18 @@ const getBoard = asyncHandler(async (req, res) => {
 
 const updateBoard = asyncHandler(async (req, res) => {
   const board = await boardService.updateBoard(req.params.id, req.user._id, req.body);
+  const io = req.app.get('io');
+  if (io) {
+    io.to(boardRoom(req.params.id)).emit('board:update', {
+      board: {
+        _id: board._id,
+        title: board.title,
+        description: board.description,
+        members: board.members,
+        memberUsers: board.memberUsers,
+      },
+    });
+  }
   res.json({ success: true, data: board });
 });
 

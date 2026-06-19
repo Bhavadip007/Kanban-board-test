@@ -10,6 +10,9 @@ Real-time collaborative task board — MERN stack with Socket.io.
 # From project root (installs deps, copies .env, seeds DB)
 npm run setup
 
+# For seeds DB - Root
+npm run seed 
+
 # Terminal 1
 npm run dev:backend
 
@@ -30,7 +33,14 @@ cd frontend && cp .env.example .env && npm install && npm run dev
 | Frontend | http://localhost:5173 |
 | Backend  | http://localhost:5050 |
 
-**Demo:** `demo@kanban.app` / `password123`
+**Demo accounts:**
+
+| Role | Email | Password |
+|------|-------|----------|
+| Manager | `manager@kanban.app` | `password123` |
+| User | `user@kanban.app` | `password123` |
+
+Managers create boards, manage columns, and assign users. Assigned users see only their boards and can manage cards (including drag-and-drop). Real-time updates sync to all assigned members via Socket.io.
 
 Postman: `backend/postman/collection.json` (run Login before Refresh; enable cookie jar)
 
@@ -47,6 +57,7 @@ Postman: `backend/postman/collection.json` (run Login before Refresh; enable coo
 | @dnd-kit drag-and-drop, configurable columns | Done |
 | Card fields: title, description, assignee, due date, priority | Done |
 | Zustand state, Auth Context only | Done |
+| Role-based access (manager vs user, board assignment) | Done |
 | Optimistic UI + rollback (moves, card CRUD) | Done |
 | Memoized card sorting (`useSortedCards`) | Done |
 | Responsive layout (desktop + tablet) | Done |
@@ -58,7 +69,7 @@ Postman: `backend/postman/collection.json` (run Login before Refresh; enable coo
 | Joi validation, rate limiting, JSON request logging | Done |
 | Global error handler (no stack traces in production) | Done |
 | MongoDB schemas, indexes, transactions, soft delete | Done |
-| Seed: demo user, 2 boards, 3 columns each, 11 cards | Done |
+| Seed: manager + user, 2 boards, 3 columns each, 11 cards | Done |
 
 ---
 
@@ -101,6 +112,8 @@ Soft delete via `deletedAt`. Transactions used for card moves, column deletes, a
 ## API
 
 **Auth:** `POST /register` · `POST /login` · `POST /refresh` · `POST /logout` · `GET /me`
+
+**Users:** `GET /users` (manager only — list assignable users)
 
 **Boards:** `GET /boards` · `POST /boards` · `GET /boards/:id` · `PATCH /boards/:id` · `DELETE /boards/:id`
 

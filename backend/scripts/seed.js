@@ -21,24 +21,33 @@ const seed = async () => {
   ]);
 
   const password = await bcrypt.hash('password123', 12);
-  const user = await User.create({
-    name: 'Demo User',
-    email: 'demo@kanban.app',
+
+  const manager = await User.create({
+    name: 'Demo Manager',
+    email: 'manager@kanban.app',
     password,
+    role: 'manager',
+  });
+
+  const member = await User.create({
+    name: 'Demo User',
+    email: 'user@kanban.app',
+    password,
+    role: 'user',
   });
 
   const board1 = await Board.create({
     title: 'Product Roadmap',
     description: 'Q2 feature planning and delivery tracking',
-    owner: user._id,
-    members: [user._id],
+    owner: manager._id,
+    members: [member._id],
   });
 
   const board2 = await Board.create({
     title: 'Marketing Campaign',
     description: 'Launch campaign tasks for the new product release',
-    owner: user._id,
-    members: [user._id],
+    owner: manager._id,
+    members: [member._id],
   });
 
   const createColumnsForBoard = async (board) => {
@@ -57,12 +66,12 @@ const seed = async () => {
     { board: board1, column: b1Cols[0], title: 'Define MVP scope', description: 'Document core features for initial release', priority: 'high', position: 0, dueDate: new Date('2026-07-01') },
     { board: board1, column: b1Cols[0], title: 'User research interviews', description: 'Schedule 5 customer interviews', priority: 'medium', position: 1 },
     { board: board1, column: b1Cols[0], title: 'Competitive analysis', description: 'Review Trello, Asana, and Linear', priority: 'low', position: 2 },
-    { board: board1, column: b1Cols[1], title: 'Design system setup', description: 'Create color tokens and typography scale', priority: 'high', position: 0, assignee: user._id },
-    { board: board1, column: b1Cols[1], title: 'API authentication flow', description: 'Implement JWT with refresh token rotation', priority: 'urgent', position: 1, assignee: user._id },
+    { board: board1, column: b1Cols[1], title: 'Design system setup', description: 'Create color tokens and typography scale', priority: 'high', position: 0, assignee: member._id },
+    { board: board1, column: b1Cols[1], title: 'API authentication flow', description: 'Implement JWT with refresh token rotation', priority: 'urgent', position: 1, assignee: member._id },
     { board: board1, column: b1Cols[2], title: 'Project scaffolding', description: 'Initialize repo with backend and frontend folders', priority: 'medium', position: 0 },
     { board: board2, column: b2Cols[0], title: 'Draft launch blog post', description: 'Highlight key features and use cases', priority: 'high', position: 0 },
     { board: board2, column: b2Cols[0], title: 'Social media calendar', description: 'Plan 2-week content schedule', priority: 'medium', position: 1 },
-    { board: board2, column: b2Cols[1], title: 'Landing page copy', description: 'Write hero section and feature blocks', priority: 'high', position: 0, assignee: user._id },
+    { board: board2, column: b2Cols[1], title: 'Landing page copy', description: 'Write hero section and feature blocks', priority: 'high', position: 0, assignee: member._id },
     { board: board2, column: b2Cols[1], title: 'Email drip sequence', description: '3-email onboarding series for signups', priority: 'medium', position: 1 },
     { board: board2, column: b2Cols[2], title: 'Brand guidelines review', description: 'Finalize logo usage and color palette', priority: 'low', position: 0 },
   ];
@@ -81,7 +90,8 @@ const seed = async () => {
   );
 
   console.log('Seed completed');
-  console.log('Demo user: demo@kanban.app / password123');
+  console.log('Manager: manager@kanban.app / password123');
+  console.log('User:    user@kanban.app / password123');
   await mongoose.disconnect();
 };
 
