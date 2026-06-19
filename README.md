@@ -48,8 +48,8 @@ Postman: `backend/postman/collection.json` (run Login before Refresh; enable coo
 
 ## Spec Coverage
 
-| Area | Status |
-|------|--------|
+| Area |
+|------|
 | JWT auth (15m access / 7d refresh, rotation, httpOnly cookie)
 | bcrypt password hashing (cost 12)
 | Protected routes, 401 vs 403
