@@ -42,6 +42,7 @@ docker compose down
 
 Seed Database ->
 docker compose exec backend npm run seed
+```
 
 | Service  | URL |
 |----------|-----|
@@ -152,6 +153,7 @@ Scoped to `board:<boardId>` rooms.
 
 ---
 
+``` bash
 CI/CD Workflow
 
 This project follows a Git-based Continuous Deployment workflow.
@@ -180,6 +182,7 @@ MongoDB Atlas provides cloud database services.
 Every push to the main branch triggers a new deployment.
 
 This demonstrates Continuous Integration and Continuous Deployment (CI/CD) practices.
+```
 
 ## Project Layout
 
