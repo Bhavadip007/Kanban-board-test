@@ -6,7 +6,7 @@ export const ConfirmDialog = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={() => close(false)}>
+    <div className="confirm-overlay" onClick={() => close(false)}>
       <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
         <h3>{title}</h3>
         <p>{message}</p>

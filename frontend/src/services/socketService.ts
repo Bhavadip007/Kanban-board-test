@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { getAccessToken } from '@/utils';
-import type { Card, Column, PresenceUser } from '@/types';
+import type { Card, Column, PresenceUser, Board } from '@/types';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5050';
 
@@ -13,6 +13,9 @@ type UserLeaveHandler = (data: { user: PresenceUser; users: PresenceUser[] }) =>
 type ColumnCreateHandler = (data: { column: Column; eventId?: string }) => void;
 type ColumnUpdateHandler = (data: { column: Column; eventId?: string }) => void;
 type ColumnDeleteHandler = (data: { columnId: string; eventId?: string }) => void;
+type BoardUpdateHandler = (data: {
+  board: Pick<Board, '_id' | 'title' | 'description' | 'members' | 'memberUsers'>;
+}) => void;
 
 class SocketService {
   private socket: Socket | null = null;
@@ -148,6 +151,10 @@ class SocketService {
     });
   }
 
+  onBoardUpdate(handler: BoardUpdateHandler) {
+    this.socket?.on('board:update', handler);
+  }
+
   offAll() {
     if (!this.socket) return;
     this.socket.off('card:create');
@@ -157,6 +164,7 @@ class SocketService {
     this.socket.off('column:create');
     this.socket.off('column:update');
     this.socket.off('column:delete');
+    this.socket.off('board:update');
     this.socket.off('user:join');
     this.socket.off('user:leave');
   }

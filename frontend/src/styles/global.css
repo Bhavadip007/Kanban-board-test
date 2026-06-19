@@ -47,7 +47,7 @@ button {
   background: none;
 }
 
-input,
+input:not([type='checkbox']):not([type='radio']),
 textarea,
 select {
   background: var(--bg);
@@ -55,6 +55,16 @@ select {
   border-radius: var(--radius);
   padding: 0.625rem 0.875rem;
   width: 100%;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 input:focus,

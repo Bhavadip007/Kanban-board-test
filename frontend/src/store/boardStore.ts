@@ -14,7 +14,11 @@ interface BoardState {
 
   fetchBoards: () => Promise<void>;
   fetchBoard: (id: string) => Promise<void>;
-  createBoard: (title: string, description?: string) => Promise<Board>;
+  createBoard: (title: string, description?: string, memberIds?: string[]) => Promise<Board>;
+  updateBoard: (
+    id: string,
+    payload: { title?: string; description?: string; memberIds?: string[] }
+  ) => Promise<Board>;
   deleteBoard: (id: string) => Promise<void>;
   setCurrentBoard: (board: Board | null) => void;
   setActiveUsers: (users: PresenceUser[]) => void;
@@ -37,21 +41,40 @@ interface BoardState {
   handleRemoteColumnCreate: (column: Column) => void;
   handleRemoteColumnUpdate: (column: Column) => void;
   handleRemoteColumnDelete: (columnId: string) => void;
+  handleRemoteBoardUpdate: (board: Pick<Board, '_id' | 'title' | 'description' | 'members' | 'memberUsers'>) => void;
 }
 
-const sortCards = (cards: Card[]) => [...cards].sort((a, b) => a.position - b.position);
+const sortCards = (cards: Card[]) =>
+  [...cards].sort(
+    (a, b) => a.position - b.position || a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
+  );
 
-const insertCardInColumn = (columns: Column[], card: Card): Column[] => {
-  const colId = typeof card.column === 'string' ? card.column : String(card.column);
-  const normalized = { ...card, column: colId };
+const colIdOf = (column: string | { _id: string }) =>
+  typeof column === 'string' ? column : String(column._id);
+
+const resolveAssignee = (
+  assigneeId: string | null | undefined,
+  members: Board['memberUsers']
+): Card['assignee'] => {
+  if (!assigneeId) return null;
+  const member = members.find((m) => m._id === assigneeId);
+  return member ? { _id: member._id, name: member.name, email: member.email } : null;
+};
+
+const applyCardToColumns = (columns: Column[], card: Card): Column[] => {
+  const targetColId = colIdOf(card.column);
+  const normalized = { ...card, column: targetColId };
+
   return columns.map((col) => {
-    if (col._id !== colId) {
-      return { ...col, cards: col.cards.filter((c) => c._id !== card._id) };
+    const id = String(col._id);
+    let cards = col.cards.filter((c) => c._id !== normalized._id);
+
+    if (id === targetColId) {
+      const idx = Math.min(normalized.position ?? cards.length, cards.length);
+      cards.splice(idx, 0, normalized);
     }
-    const filtered = col.cards.filter((c) => c._id !== card._id);
-    const updated = [...filtered];
-    updated.splice(normalized.position, 0, normalized);
-    return { ...col, cards: sortCards(updated.map((c, i) => ({ ...c, position: i }))) };
+
+    return { ...col, cards: sortCards(cards.map((c, i) => ({ ...c, position: i }))) };
   });
 };
 
@@ -85,11 +108,17 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
   },
 
-  createBoard: async (title, description) => {
-    const board = await boardService.create(title, description);
+  createBoard: async (title, description, memberIds) => {
+    const board = await boardService.create(title, description, memberIds);
     set((s) => ({
       boards: [
-        { _id: board._id, title: board.title, description: board.description, updatedAt: board.updatedAt },
+        {
+          _id: board._id,
+          title: board.title,
+          description: board.description,
+          boardRole: board.boardRole,
+          updatedAt: board.updatedAt,
+        },
         ...s.boards,
       ],
     }));
@@ -101,6 +130,33 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     await boardService.delete(id);
     set((s) => ({ boards: s.boards.filter((b) => b._id !== id) }));
     toast.success('Board deleted');
+  },
+
+  updateBoard: async (id, payload) => {
+    const board = await boardService.update(id, payload);
+    set((s) => ({
+      boards: s.boards.map((b) =>
+        b._id === id
+          ? {
+              ...b,
+              title: board.title,
+              description: board.description,
+              updatedAt: board.updatedAt,
+            }
+          : b
+      ),
+      currentBoard:
+        s.currentBoard?._id === id
+          ? {
+              ...board,
+              columns: s.currentBoard.columns,
+              memberUsers: board.memberUsers,
+              members: board.members,
+            }
+          : s.currentBoard,
+    }));
+    toast.success('Board updated');
+    return board;
   },
 
   setCurrentBoard: (board) => set({ currentBoard: board }),
@@ -172,7 +228,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     set((s) => {
       if (!s.currentBoard) return s;
-      return { currentBoard: { ...s.currentBoard, columns: insertCardInColumn(s.currentBoard.columns, tempCard) } };
+      return { currentBoard: { ...s.currentBoard, columns: applyCardToColumns(s.currentBoard.columns, tempCard) } };
     });
 
     try {
@@ -183,7 +239,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           ...c,
           cards: c.cards.filter((card) => card._id !== tempCard._id),
         }));
-        return { currentBoard: { ...s.currentBoard, columns: insertCardInColumn(cols, card) } };
+        return { currentBoard: { ...s.currentBoard, columns: applyCardToColumns(cols, card) } };
       });
       toast.success('Card added');
     } catch (err) {
@@ -197,17 +253,23 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     set((s) => {
       if (!s.currentBoard) return s;
+      const members = s.currentBoard.memberUsers ?? [];
       const cols = s.currentBoard.columns.map((col) => ({
         ...col,
-        cards: col.cards.map((c) =>
-          c._id === cardId
-            ? {
-                ...c,
-                ...updates,
-                assignee: updates.assignee === null ? null : c.assignee,
-              }
-            : c
-        ),
+        cards: col.cards.map((c) => {
+          if (c._id !== cardId) return c;
+          const next: Card = {
+            ...c,
+            ...(updates.title !== undefined && { title: updates.title }),
+            ...(updates.description !== undefined && { description: updates.description }),
+            ...(updates.priority !== undefined && { priority: updates.priority }),
+            ...(updates.dueDate !== undefined && { dueDate: updates.dueDate }),
+          };
+          if (updates.assignee !== undefined) {
+            next.assignee = resolveAssignee(updates.assignee, members);
+          }
+          return next;
+        }),
       }));
       return { currentBoard: { ...s.currentBoard, columns: cols } };
     });
@@ -223,7 +285,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const card = await cardService.update(cardId, payload);
       set((s) => {
         if (!s.currentBoard) return s;
-        return { currentBoard: { ...s.currentBoard, columns: insertCardInColumn(s.currentBoard.columns, card) } };
+        return {
+          currentBoard: {
+            ...s.currentBoard,
+            columns: applyCardToColumns(s.currentBoard.columns, card),
+          },
+        };
       });
       toast.success('Card updated');
     } catch (err) {
@@ -283,7 +350,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   confirmMove: (card) => {
     set((s) => {
       if (!s.currentBoard) return s;
-      return { currentBoard: { ...s.currentBoard, columns: insertCardInColumn(s.currentBoard.columns, card) } };
+      return { currentBoard: { ...s.currentBoard, columns: applyCardToColumns(s.currentBoard.columns, card) } };
     });
   },
 
@@ -297,14 +364,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       const boardId = typeof card.board === 'string' ? card.board : String(card.board);
       if (s.currentBoard._id !== boardId) return s;
       if (s.currentBoard.columns.some((c) => c.cards.some((existing) => existing._id === card._id))) return s;
-      return { currentBoard: { ...s.currentBoard, columns: insertCardInColumn(s.currentBoard.columns, card) } };
+      return { currentBoard: { ...s.currentBoard, columns: applyCardToColumns(s.currentBoard.columns, card) } };
     });
   },
 
   handleRemoteUpdate: (card) => {
     set((s) => {
       if (!s.currentBoard) return s;
-      return { currentBoard: { ...s.currentBoard, columns: insertCardInColumn(s.currentBoard.columns, card) } };
+      return { currentBoard: { ...s.currentBoard, columns: applyCardToColumns(s.currentBoard.columns, card) } };
     });
   },
 
@@ -327,7 +394,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   handleRemoteMove: (card) => {
     set((s) => {
       if (!s.currentBoard) return s;
-      return { currentBoard: { ...s.currentBoard, columns: insertCardInColumn(s.currentBoard.columns, card) } };
+      return { currentBoard: { ...s.currentBoard, columns: applyCardToColumns(s.currentBoard.columns, card) } };
     });
   },
 
@@ -368,6 +435,26 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           ...s.currentBoard,
           columns: s.currentBoard.columns.filter((c) => c._id !== columnId),
         },
+      };
+    });
+  },
+
+  handleRemoteBoardUpdate: (board) => {
+    set((s) => {
+      if (!s.currentBoard || s.currentBoard._id !== board._id) return s;
+      return {
+        currentBoard: {
+          ...s.currentBoard,
+          title: board.title,
+          description: board.description,
+          members: board.members,
+          memberUsers: board.memberUsers,
+        },
+        boards: s.boards.map((b) =>
+          b._id === board._id
+            ? { ...b, title: board.title, description: board.description }
+            : b
+        ),
       };
     });
   },

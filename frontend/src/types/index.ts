@@ -1,9 +1,19 @@
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
+export type UserRole = 'manager' | 'user';
+export type BoardRole = 'manager' | 'member';
 
 export interface User {
   id: string;
   name: string;
   email: string;
+  role: UserRole;
+}
+
+export interface AssignableUser {
+  _id: string;
+  name: string;
+  email: string;
+  role: UserRole;
 }
 
 export interface Assignee {
@@ -38,6 +48,7 @@ export interface BoardMember {
   _id: string;
   name: string;
   email: string;
+  role?: UserRole;
 }
 
 export interface Board {
@@ -47,6 +58,7 @@ export interface Board {
   owner: string;
   members: string[];
   memberUsers: BoardMember[];
+  boardRole: BoardRole;
   columns: Column[];
   createdAt: string;
   updatedAt: string;
@@ -56,6 +68,7 @@ export interface BoardSummary {
   _id: string;
   title: string;
   description: string;
+  boardRole: BoardRole;
   updatedAt: string;
 }
 

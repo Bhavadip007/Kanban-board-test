@@ -8,6 +8,7 @@ import { KanbanCard } from './KanbanCard';
 
 interface KanbanColumnProps {
   column: Column;
+  canManageColumns: boolean;
   onAddCard: (columnId: string, title: string, description: string) => Promise<void>;
   onUpdateTitle: (columnId: string, title: string) => Promise<void>;
   onDeleteColumn: () => Promise<void>;
@@ -15,7 +16,14 @@ interface KanbanColumnProps {
 }
 
 export const KanbanColumn = memo(
-  ({ column, onAddCard, onUpdateTitle, onDeleteColumn, onCardClick }: KanbanColumnProps) => {
+  ({
+    column,
+    canManageColumns,
+    onAddCard,
+    onUpdateTitle,
+    onDeleteColumn,
+    onCardClick,
+  }: KanbanColumnProps) => {
     const [editing, setEditing] = useState(false);
     const [title, setTitle] = useState(column.title);
     const [adding, setAdding] = useState(false);
@@ -61,7 +69,7 @@ export const KanbanColumn = memo(
         setNewDesc('');
         setAdding(false);
       } catch {
-        /* toast shown by parent */
+        // parent shows toast
       } finally {
         setSubmitting(false);
       }
@@ -70,7 +78,7 @@ export const KanbanColumn = memo(
     return (
       <div className="kanban-column">
         <div className="column-header">
-          {editing ? (
+          {canManageColumns && editing ? (
             <input
               className="column-title-input"
               value={title}
@@ -86,18 +94,23 @@ export const KanbanColumn = memo(
               autoFocus
             />
           ) : (
-            <span className="column-title" onDoubleClick={() => setEditing(true)}>
+            <span
+              className="column-title"
+              onDoubleClick={canManageColumns ? () => setEditing(true) : undefined}
+            >
               {column.title}
             </span>
           )}
-          <div className="column-actions">
-            <button type="button" onClick={() => setEditing(true)} title="Rename column">
-              Rename
-            </button>
-            <button type="button" onClick={onDeleteColumn} title="Delete column">
-              Delete
-            </button>
-          </div>
+          {canManageColumns && (
+            <div className="column-actions">
+              <button type="button" onClick={() => setEditing(true)} title="Rename column">
+                Rename
+              </button>
+              <button type="button" onClick={onDeleteColumn} title="Delete column">
+                Delete
+              </button>
+            </div>
+          )}
         </div>
 
         <div

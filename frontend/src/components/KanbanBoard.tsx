@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -10,6 +10,7 @@ import {
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
+  DragCancelEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { Board, Card } from '@/types';
@@ -43,6 +44,7 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
   const currentBoard = useBoardStore((s) => s.currentBoard);
 
   const columns = currentBoard?.columns ?? board.columns;
+  const isManager = (currentBoard ?? board).boardRole === 'manager';
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -53,6 +55,14 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
     () => columns.flatMap((col) => col.cards),
     [columns]
   );
+
+  useEffect(() => {
+    if (!selectedCard) return;
+    const fresh = allCards.find((c) => c._id === selectedCard._id);
+    if (fresh && fresh.updatedAt !== selectedCard.updatedAt) {
+      setSelectedCard(fresh);
+    }
+  }, [allCards, selectedCard]);
 
   const findColumnByCardId = useCallback(
     (cardId: string) => columns.find((col) => col.cards.some((c) => c._id === cardId)),
@@ -76,6 +86,13 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
     dragSnapshotRef.current = boardState ? structuredClone(boardState) : null;
     const card = allCards.find((c) => c._id === event.active.id);
     if (card) setActiveCard(card);
+  };
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    setActiveCard(null);
+    const snapshot = dragSnapshotRef.current;
+    dragSnapshotRef.current = null;
+    if (snapshot) rollbackBoard(snapshot);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -111,7 +128,8 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
     }
 
     const destColId = resolveColumnId(over.id as string, over);
-    const destCol = columns.find((c) => c._id === destColId);
+    const liveColumns = useBoardStore.getState().currentBoard?.columns ?? columns;
+    const destCol = liveColumns.find((c) => c._id === destColId);
     if (!destCol) {
       if (snapshot) rollbackBoard(snapshot);
       return;
@@ -129,6 +147,7 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
     const origPosition = origCol?.cards.findIndex((c) => c._id === active.id) ?? -1;
 
     if (origCol?._id === destColId && origPosition === position) {
+      if (snapshot) rollbackBoard(snapshot);
       return;
     }
 
@@ -197,12 +216,14 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div className="kanban-board">
           {columns.map((column) => (
             <KanbanColumn
               key={column._id}
               column={column}
+              canManageColumns={isManager}
               onAddCard={handleAddCard}
               onUpdateTitle={handleUpdateColumn}
               onDeleteColumn={() => handleDeleteColumn(column._id, column.title)}
@@ -210,31 +231,33 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
             />
           ))}
 
-          <div className="add-column">
-            {addingColumn ? (
-              <div className="kanban-column" style={{ padding: '0.75rem' }}>
-                <input
-                  placeholder="Column name, e.g. Review"
-                  value={newColumnTitle}
-                  onChange={(e) => setNewColumnTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
-                  autoFocus
-                />
-                <div className="add-card-actions" style={{ marginTop: '0.5rem' }}>
-                  <button className="btn btn-primary" onClick={handleAddColumn}>
-                    Add column
-                  </button>
-                  <button className="btn btn-secondary" onClick={() => setAddingColumn(false)}>
-                    Cancel
-                  </button>
+          {isManager && (
+            <div className="add-column">
+              {addingColumn ? (
+                <div className="kanban-column" style={{ padding: '0.75rem' }}>
+                  <input
+                    placeholder="Column name, e.g. Review"
+                    value={newColumnTitle}
+                    onChange={(e) => setNewColumnTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
+                    autoFocus
+                  />
+                  <div className="add-card-actions" style={{ marginTop: '0.5rem' }}>
+                    <button className="btn btn-primary" onClick={handleAddColumn}>
+                      Add column
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => setAddingColumn(false)}>
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <button className="add-column-btn kanban-column" onClick={() => setAddingColumn(true)}>
-                + Add column
-              </button>
-            )}
-          </div>
+              ) : (
+                <button className="add-column-btn kanban-column" onClick={() => setAddingColumn(true)}>
+                  + Add column
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <DragOverlay>

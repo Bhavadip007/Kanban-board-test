@@ -20,12 +20,19 @@ export const boardService = {
     return data.data;
   },
 
-  create: async (title: string, description?: string) => {
-    const { data } = await apiClient.post<ApiResponse<Board>>('/boards', { title, description });
+  create: async (title: string, description?: string, memberIds?: string[]) => {
+    const { data } = await apiClient.post<ApiResponse<Board>>('/boards', {
+      title,
+      description,
+      memberIds,
+    });
     return data.data;
   },
 
-  update: async (id: string, payload: { title?: string; description?: string }) => {
+  update: async (
+    id: string,
+    payload: { title?: string; description?: string; memberIds?: string[] }
+  ) => {
     const { data } = await apiClient.patch<ApiResponse<Board>>(`/boards/${id}`, payload);
     return data.data;
   },

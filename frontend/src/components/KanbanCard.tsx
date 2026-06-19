@@ -12,7 +12,7 @@ interface KanbanCardProps {
 export const KanbanCard = memo(({ card, onClick }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card._id,
-    data: { type: 'card', card },
+    // data: { type: 'card', card },
   });
 
   const style = {
