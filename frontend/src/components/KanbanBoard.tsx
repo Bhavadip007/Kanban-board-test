@@ -113,6 +113,17 @@ export const KanbanBoard = memo(({ board }: KanbanBoardProps) => {
 
     if (overIndex < 0) return;
 
+    const currentCard = columns
+  .flatMap(col => col.cards)
+  .find(c => c._id === active.id);
+
+if (
+  currentCard?.column === overColId &&
+  currentCard?.position === overIndex
+) {
+  return;
+}
+
     moveCardOptimistic(active.id as string, overColId, overIndex);
   };
 
