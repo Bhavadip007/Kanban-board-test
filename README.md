@@ -28,6 +28,21 @@ cd backend && cp .env.example .env && npm install && npm run seed && npm run dev
 cd frontend && cp .env.example .env && npm install && npm run dev
 ```
 
+Docker Setup:
+
+```bash
+Start All Services ->
+docker compose up --build
+
+Run in Background ->
+docker compose up -d
+
+Stop Containers ->
+docker compose down
+
+Seed Database ->
+docker compose exec backend npm run seed
+
 | Service  | URL |
 |----------|-----|
 | Frontend | http://localhost:5173 |
@@ -136,6 +151,35 @@ Auth: `socket.auth = { token: accessToken }`
 Scoped to `board:<boardId>` rooms.
 
 ---
+
+CI/CD Workflow
+
+This project follows a Git-based Continuous Deployment workflow.
+
+Flow
+Developer
+    │
+    ▼
+ GitHub Repository
+    │
+ ┌──┴─────────────┐
+ │                │
+ ▼                ▼
+Vercel         Render
+Frontend       Backend
+    │                │
+    └──────┬─────────┘
+           ▼
+     MongoDB Atlas
+Process
+Developer pushes code to GitHub.
+GitHub stores source code.
+Vercel automatically deploys frontend updates.
+Render automatically deploys backend updates.
+MongoDB Atlas provides cloud database services.
+Every push to the main branch triggers a new deployment.
+
+This demonstrates Continuous Integration and Continuous Deployment (CI/CD) practices.
 
 ## Project Layout
 
