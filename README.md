@@ -50,26 +50,26 @@ Postman: `backend/postman/collection.json` (run Login before Refresh; enable coo
 
 | Area | Status |
 |------|--------|
-| JWT auth (15m access / 7d refresh, rotation, httpOnly cookie) | Done |
-| bcrypt password hashing (cost 12) | Done |
-| Protected routes, 401 vs 403 | Done |
-| Auth input sanitization, unique email | Done |
-| @dnd-kit drag-and-drop, configurable columns | Done |
-| Card fields: title, description, assignee, due date, priority | Done |
-| Zustand state, Auth Context only | Done |
-| Role-based access (manager vs user, board assignment) | Done |
-| Optimistic UI + rollback (moves, card CRUD) | Done |
-| Memoized card sorting (`useSortedCards`) | Done |
-| Responsive layout (desktop + tablet) | Done |
-| Socket.io board rooms, live card + column sync | Done |
-| Events: card CRUD/move, column CRUD, user join/leave | Done |
-| Reconnect, duplicate event dedup, out-of-order handling | Done |
-| Server-authoritative conflict resolution | Done |
-| REST API (all required endpoints) | Done |
-| Joi validation, rate limiting, JSON request logging | Done |
-| Global error handler (no stack traces in production) | Done |
-| MongoDB schemas, indexes, transactions, soft delete | Done |
-| Seed: manager + user, 2 boards, 3 columns each, 11 cards | Done |
+| JWT auth (15m access / 7d refresh, rotation, httpOnly cookie)
+| bcrypt password hashing (cost 12)
+| Protected routes, 401 vs 403
+| Auth input sanitization, unique email
+| @dnd-kit drag-and-drop, configurable columns
+| Card fields: title, description, assignee, due date, priority
+| Zustand state, Auth Context only
+| Role-based access (manager vs user, board assignment)
+| Optimistic UI + rollback (moves, card CRUD)
+| Memoized card sorting (`useSortedCards`)
+| Responsive layout (desktop + tablet)
+| Socket.io board rooms, live card + column sync
+| Events: card CRUD/move, column CRUD, user join/leave
+| Reconnect, duplicate event dedup, out-of-order handling
+| Server-authoritative conflict resolution
+| REST API (all required endpoints)
+| Joi validation, rate limiting, JSON request logging
+| Global error handler (no stack traces in production)
+| MongoDB schemas, indexes, transactions, soft delete
+| Seed: manager + user, 2 boards, 3 columns each, 11 cards
 
 ---
 
