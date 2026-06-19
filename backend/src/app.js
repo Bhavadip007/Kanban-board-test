@@ -8,6 +8,7 @@ const errorHandler = require('./middleware/error.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
 
 const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
 const boardRoutes = require('./routes/board.routes');
 const columnRoutes = require('./routes/column.routes');
 const columnCardRoutes = require('./routes/card.routes');
@@ -42,6 +43,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', apiLimiter, userRoutes);
 app.use('/api/v1/boards', apiLimiter, boardRoutes);
 app.use('/api/v1/columns', apiLimiter, columnRoutes);
 app.use('/api/v1/columns', apiLimiter, columnCardRoutes);

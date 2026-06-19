@@ -1,18 +1,32 @@
-const Board = require('../models/Board');
-const Column = require('../models/Column');
-const Card = require('../models/Card');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
-const { runWithTransaction, sessionOpts, applySession } = require('../utils/transaction');
+const { runWithTransaction, sessionOpts } = require('../utils/transaction');
+const { isBoardManager, userHasBoardAccess } = require('../middleware/auth.middleware');
 
 const notDeleted = { deletedAt: null };
 
-const userHasAccess = (board, userId) => {
-  const uid = userId.toString();
-  return board.owner.toString() === uid || board.members.some((m) => m.toString() === uid);
+const userHasAccess = userHasBoardAccess;
+
+const resolveMemberIds = async (memberIds, ownerId) => {
+  if (!memberIds?.length) return [];
+
+  const users = await User.find({
+    _id: { $in: memberIds },
+    role: 'user',
+    ...notDeleted,
+  }).select('_id');
+
+  const validIds = users.map((u) => u._id.toString());
+  const ownerStr = ownerId.toString();
+
+  return [...new Set(validIds.filter((id) => id !== ownerStr))];
 };
 
 const getBoardById = async (boardId, userId) => {
+  const Board = require('../models/Board');
+  const Column = require('../models/Column');
+  const Card = require('../models/Card');
+
   const board = await Board.findOne({ _id: boardId, ...notDeleted });
   if (!board) {
     throw new ApiError(404, 'Board not found');
@@ -36,35 +50,56 @@ const getBoardById = async (boardId, userId) => {
 
   const columnsWithCards = columns.map((col) => ({
     ...col,
-    cards: cardsByColumn[col._id.toString()] || [],
+    cards: (cardsByColumn[col._id.toString()] || []).sort(
+      (a, b) => a.position - b.position || a.title.localeCompare(b.title)
+    ),
   }));
 
   const memberIds = [
     ...new Set([board.owner.toString(), ...board.members.map((m) => m.toString())]),
   ];
   const memberUsers = await User.find({ _id: { $in: memberIds }, deletedAt: null })
-    .select('name email')
+    .select('name email role')
     .lean();
 
   return {
     ...board.toObject(),
     memberUsers,
+    boardRole: isBoardManager(board, userId) ? 'manager' : 'member',
     columns: columnsWithCards,
   };
 };
 
 const listBoards = async (userId) => {
-  const boards = await Board.find({
-    ...notDeleted,
-    $or: [{ owner: userId }, { members: userId }],
-  })
-    .sort({ updatedAt: -1 })
-    .lean();
+  const Board = require('../models/Board');
+  const user = await User.findOne({ _id: userId, ...notDeleted });
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
 
-  return boards;
+  const filter =
+    user.role === 'manager'
+      ? { owner: userId, ...notDeleted }
+      : { members: userId, ...notDeleted };
+
+  const boards = await Board.find(filter).sort({ updatedAt: -1 }).lean();
+
+  return boards.map((b) => ({
+    ...b,
+    boardRole: isBoardManager(b, userId) ? 'manager' : 'member',
+  }));
 };
 
 const createBoard = async (userId, data) => {
+  const Board = require('../models/Board');
+  const Column = require('../models/Column');
+
+  const user = await User.findOne({ _id: userId, ...notDeleted });
+  if (!user || user.role !== 'manager') {
+    throw new ApiError(403, 'Only managers can create boards');
+  }
+
+  const members = await resolveMemberIds(data.memberIds, userId);
   let boardId;
 
   await runWithTransaction(async (session) => {
@@ -73,7 +108,7 @@ const createBoard = async (userId, data) => {
         title: data.title,
         description: data.description || '',
         owner: userId,
-        members: [userId],
+        members,
       }],
       sessionOpts(session)
     );
@@ -90,28 +125,36 @@ const createBoard = async (userId, data) => {
 };
 
 const updateBoard = async (boardId, userId, data) => {
+  const Board = require('../models/Board');
   const board = await Board.findOne({ _id: boardId, ...notDeleted });
   if (!board) {
     throw new ApiError(404, 'Board not found');
   }
-  if (board.owner.toString() !== userId.toString()) {
-    throw new ApiError(403, 'Only the board owner can update the board');
+  if (!isBoardManager(board, userId)) {
+    throw new ApiError(403, 'Only the board manager can update the board');
   }
 
   if (data.title !== undefined) board.title = data.title;
   if (data.description !== undefined) board.description = data.description;
+  if (data.memberIds !== undefined) {
+    board.members = await resolveMemberIds(data.memberIds, userId);
+  }
   await board.save();
 
   return getBoardById(board._id, userId);
 };
 
 const deleteBoard = async (boardId, userId) => {
+  const Board = require('../models/Board');
+  const Column = require('../models/Column');
+  const Card = require('../models/Card');
+
   const board = await Board.findOne({ _id: boardId, ...notDeleted });
   if (!board) {
     throw new ApiError(404, 'Board not found');
   }
-  if (board.owner.toString() !== userId.toString()) {
-    throw new ApiError(403, 'Only the board owner can delete the board');
+  if (!isBoardManager(board, userId)) {
+    throw new ApiError(403, 'Only the board manager can delete the board');
   }
 
   const now = new Date();
@@ -129,4 +172,5 @@ module.exports = {
   updateBoard,
   deleteBoard,
   userHasAccess,
+  isBoardManager,
 };

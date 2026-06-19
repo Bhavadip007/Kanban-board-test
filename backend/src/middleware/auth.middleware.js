@@ -1,7 +1,5 @@
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
-const { verifyAccessToken } = require('../utils/token');
 const asyncHandler = require('../utils/asyncHandler');
 
 const authenticate = asyncHandler(async (req, res, next) => {
@@ -13,8 +11,9 @@ const authenticate = asyncHandler(async (req, res, next) => {
   const token = authHeader.slice(7);
 
   try {
+    const { verifyAccessToken } = require('../utils/token');
     const payload = verifyAccessToken(token);
-    const user = await User.findOne({ _id: payload.sub, deletedAt: null }).select('_id name email');
+    const user = await User.findOne({ _id: payload.sub, deletedAt: null }).select('_id name email role');
 
     if (!user) {
       throw new ApiError(401, 'Authentication required');
@@ -28,29 +27,23 @@ const authenticate = asyncHandler(async (req, res, next) => {
   }
 });
 
-const authorizeBoardAccess = asyncHandler(async (req, res, next) => {
-  const Board = require('../models/Board');
-  const boardId = req.params.id || req.params.boardId || req.boardId;
-
-  if (!boardId) {
-    throw new ApiError(403, 'Access denied');
+const requireManager = asyncHandler(async (req, res, next) => {
+  if (req.user.role !== 'manager') {
+    throw new ApiError(403, 'Manager access required');
   }
-
-  const board = await Board.findOne({ _id: boardId, deletedAt: null });
-  if (!board) {
-    throw new ApiError(404, 'Board not found');
-  }
-
-  const userId = req.user._id.toString();
-  const isOwner = board.owner.toString() === userId;
-  const isMember = board.members.some((m) => m.toString() === userId);
-
-  if (!isOwner && !isMember) {
-    throw new ApiError(403, 'Access denied');
-  }
-
-  req.board = board;
   next();
 });
 
-module.exports = { authenticate, authorizeBoardAccess };
+const isBoardManager = (board, userId) => board.owner.toString() === userId.toString();
+
+const userHasBoardAccess = (board, userId) => {
+  const uid = userId.toString();
+  return board.owner.toString() === uid || board.members.some((m) => m.toString() === uid);
+};
+
+module.exports = {
+  authenticate,
+  requireManager,
+  isBoardManager,
+  userHasBoardAccess,
+};

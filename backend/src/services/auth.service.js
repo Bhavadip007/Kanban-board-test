@@ -23,7 +23,7 @@ const register = async ({ name, email, password }) => {
   const { accessToken, refreshToken } = await issueTokens(user);
 
   return {
-    user: { id: user._id, name: user.name, email: user.email },
+    user: { id: user._id, name: user.name, email: user.email, role: user.role },
     accessToken,
     refreshToken,
   };
@@ -43,7 +43,7 @@ const login = async ({ email, password }) => {
   const { accessToken, refreshToken } = await issueTokens(user);
 
   return {
-    user: { id: user._id, name: user.name, email: user.email },
+    user: { id: user._id, name: user.name, email: user.email, role: user.role },
     accessToken,
     refreshToken,
   };
@@ -96,7 +96,7 @@ const refresh = async (refreshToken) => {
   await user.save();
 
   return {
-    user: { id: user._id, name: user.name, email: user.email },
+    user: { id: user._id, name: user.name, email: user.email, role: user.role },
     accessToken,
     refreshToken: newRefreshToken,
   };
@@ -114,7 +114,7 @@ const getProfile = async (userId) => {
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
-  return { id: user._id, name: user.name, email: user.email };
+  return { id: user._id, name: user.name, email: user.email, role: user.role };
 };
 
 module.exports = { register, login, refresh, logout, getProfile };

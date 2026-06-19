@@ -3,7 +3,7 @@ const Card = require('../models/Card');
 const Board = require('../models/Board');
 const ApiError = require('../utils/ApiError');
 const { runWithTransaction, sessionOpts, applySession } = require('../utils/transaction');
-const { userHasAccess } = require('./board.service');
+const { userHasAccess, isBoardManager } = require('./board.service');
 
 const notDeleted = { deletedAt: null };
 
@@ -30,8 +30,19 @@ const assertBoardAccess = async (boardId, userId) => {
   return board;
 };
 
+const assertBoardManager = async (boardId, userId) => {
+  const board = await Board.findOne({ _id: boardId, ...notDeleted });
+  if (!board) {
+    throw new ApiError(404, 'Board not found');
+  }
+  if (!isBoardManager(board, userId)) {
+    throw new ApiError(403, 'Only the board manager can manage columns');
+  }
+  return board;
+};
+
 const createColumn = async (boardId, userId, data) => {
-  await assertBoardAccess(boardId, userId);
+  await assertBoardManager(boardId, userId);
 
   let position = data.position;
   if (position === undefined) {
@@ -52,8 +63,8 @@ const createColumn = async (boardId, userId, data) => {
 
 const updateColumn = async (columnId, userId, data) => {
   const { column, board } = await getColumnWithBoard(columnId);
-  if (!userHasAccess(board, userId)) {
-    throw new ApiError(403, 'Access denied');
+  if (!isBoardManager(board, userId)) {
+    throw new ApiError(403, 'Only the board manager can manage columns');
   }
 
   if (data.title !== undefined) column.title = data.title;
@@ -82,8 +93,8 @@ const updateColumn = async (columnId, userId, data) => {
 
 const deleteColumn = async (columnId, userId) => {
   const { column, board } = await getColumnWithBoard(columnId);
-  if (!userHasAccess(board, userId)) {
-    throw new ApiError(403, 'Access denied');
+  if (!isBoardManager(board, userId)) {
+    throw new ApiError(403, 'Only the board manager can manage columns');
   }
 
   await runWithTransaction(async (session) => {

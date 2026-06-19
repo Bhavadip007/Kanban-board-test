@@ -64,7 +64,7 @@ const createCard = async (columnId, userId, data) => {
     priority: data.priority || 'medium',
   });
 
-  return Card.findById(card._id).populate('assignee', 'name email');
+  return Card.findById(card._id).populate('assignee', 'name email').lean();
 };
 
 const updateCard = async (cardId, userId, data) => {
@@ -90,7 +90,7 @@ const updateCard = async (cardId, userId, data) => {
     await card.save();
   }
 
-  return Card.findById(cardId).populate('assignee', 'name email');
+  return Card.findById(cardId).populate('assignee', 'name email').lean();
 };
 
 const deleteCard = async (cardId, userId) => {
@@ -143,7 +143,7 @@ const moveCard = async (cardId, userId, { columnId, position }) => {
     }
   });
 
-  return Card.findById(cardId).populate('assignee', 'name email');
+  return Card.findById(cardId).populate('assignee', 'name email').lean();
 };
 
 module.exports = { createCard, updateCard, deleteCard, moveCard, getCardWithContext };
